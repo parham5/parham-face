@@ -710,6 +710,43 @@
       </div>
 
   <input id="imageInput" type="file" accept="image/*" style="display:none" />
+  <aside class="info-pane">
+  <div class="info-badge">
+    <span>🔥 Realtime Firebase Chat</span>
+  </div>
+  <div>
+    <h2 class="info-title">چت ساده اما حرفه‌ای</h2>
+    <p class="info-sub">
+      این صفحه یک پیام‌رسان ساده است که با استفاده از Firebase Realtime Database ساخته شده.
+      هر پیامی که ارسال می‌کنی، برای همه‌ی افرادی که همین صفحه را باز کرده‌اند به صورت آنی نمایش داده می‌شود.
+    </p>
+  </div>
+
+  <div class="info-card">
+    <h3>ویژگی‌ها</h3>
+    <div class="pill-row">
+      <span class="pill">Realtime 🔁</span>
+      <span class="pill">چند‌نفره 👥</span>
+      <span class="pill">نمایش نام فرستنده 🏷️</span>
+      <span class="pill">ذخیره در دیتابیس ☁️</span>
+    </div>
+  </div>
+
+  <div class="info-card">
+    <h3>نکته‌ی مهم</h3>
+    <p>
+      برای تست راحت، در بخش <strong>Realtime Database → Rules</strong> در Firebase می‌تونی موقتاً دسترسی را
+      روی <code>.read: true</code> و <code>.write: true</code> قرار بدی. بعد از تست حتماً قوانین را سخت‌گیرانه‌تر کن.
+    </p>
+  </div>
+
+  <div class="info-card">
+    <div class="status-row">
+      <span class="status-dot-live"></span>
+      <span>همه‌ی تب‌ها و دستگاه‌ها هم‌زمان سینک می‌شوند. این همون رفتاریه که از پیام‌رسان‌ها انتظار داری.</span>
+    </div>
+  </div>
+</aside>
 
   <!-- Firebase + Chat Logic -->
   <script type="module">
