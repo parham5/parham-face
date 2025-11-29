@@ -158,7 +158,9 @@
     /* Room tabs */
     .room-tabs {
       display: flex;
-      gap: 6px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
       padding: 8px 16px 4px;
       border-bottom: 1px solid rgba(148,163,184,0.2);
       background: rgba(15,23,42,0.85);
@@ -166,6 +168,21 @@
 
     :root.light .room-tabs {
       background: rgba(249,250,251,0.96);
+    }
+
+    .room-tabs-list {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      scrollbar-width: thin;
+    }
+
+    .room-tabs-list::-webkit-scrollbar {
+      height: 4px;
+    }
+    .room-tabs-list::-webkit-scrollbar-thumb {
+      background: rgba(148,163,184,0.5);
+      border-radius: 999px;
     }
 
     .room-tab {
@@ -180,12 +197,19 @@
       align-items: center;
       gap: 4px;
       transition: all 0.17s ease;
+      white-space: nowrap;
+      flex-shrink: 0;
     }
 
     .room-tab.active {
       background: var(--accent-soft);
       color: var(--text);
       border-color: var(--accent);
+    }
+
+    .room-tab.create {
+      font-weight: 600;
+      border-style: dashed;
     }
 
     .messages {
@@ -641,9 +665,8 @@
 
         <!-- اتاق‌ها -->
         <div class="room-tabs">
-          <button type="button" class="room-tab active" data-room="general">عمومی</button>
-          <button type="button" class="room-tab" data-room="friends">دوستان</button>
-          <button type="button" class="room-tab" data-room="family">خانوادگی 🔒</button>
+          <div id="roomTabs" class="room-tabs-list"></div>
+          <button type="button" id="createRoomBtn" class="room-tab create">+ اتاق جدید</button>
         </div>
 
         <div id="messages" class="messages" aria-live="polite"></div>
@@ -722,15 +745,15 @@
         <div class="info-card">
           <h3>قوانین دسترسی</h3>
           <p>
-            اتاق <strong>خانوادگی</strong> رمز دارد. برای ورود باید رمز صحیح را وارد کنی.
-            برای تست، رمز را در کد می‌توانی عوض کنی.
+            اتاق <strong>خانوادگی</strong> و اتاق‌های خصوصی می‌تونن رمز داشته باشن.
+            هنگام ورود، اگر رمز تعریف شده باشد، از شما پرسیده می‌شود.
           </p>
         </div>
 
         <div class="info-card">
           <div class="status-row">
             <span class="status-dot-live"></span>
-            <span>همه‌ی تب‌ها و دستگاه‌ها هم‌زمان سینک می‌شوند. شبیه رفتار پیام‌رسان‌های واقعی.</span>
+            <span>همه‌ی تب‌ها و دستگاه‌ها هم‌زمان سینک می‌شوند؛ مثل پیام‌رسان‌های واقعی.</span>
           </div>
         </div>
 
@@ -769,7 +792,7 @@
       getDownloadURL
     } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-storage.js";
 
-    // *** تنظیمات پروژه‌ی خودت ***
+    // --- تنظیمات Firebase پروژه خودت ---
     const firebaseConfig = {
       apiKey: "AIzaSyCveXOeDHup-MKQnMLe7gxSqePFOfPaKRs",
       authDomain: "facebook-chat-3c9e1.firebaseapp.com",
@@ -791,13 +814,14 @@
     const messageInput = document.getElementById("messageInput");
     const sendBtn = document.getElementById("sendBtn");
     const errorBanner = document.getElementById("errorBanner");
-    const roomTabs = document.querySelectorAll(".room-tab");
     const typingIndicator = document.getElementById("typingIndicator");
     const onlineList = document.getElementById("onlineList");
     const imageBtn = document.getElementById("imageBtn");
     const imageInput = document.getElementById("imageInput");
     const themeToggle = document.getElementById("themeToggle");
     const themeToggleLabel = document.getElementById("themeToggleLabel");
+    const roomTabsContainer = document.getElementById("roomTabs");
+    const createRoomBtn = document.getElementById("createRoomBtn");
 
     // شناسه یکتا برای هر تب/دستگاه
     const myId = self.crypto?.randomUUID
@@ -819,10 +843,15 @@
     let initialLoadDone = false;
     setTimeout(() => { initialLoadDone = true; }, 2000);
 
-    // رمز اتاق‌ها (می‌توانی عوض کنی)
-    const roomPasswords = {
-      family: "1234" // رمز تست
+    // اتاق‌های پیش‌فرض
+    const defaultRooms = {
+      general: { id: "general", name: "عمومی", isPrivate: false },
+      friends: { id: "friends", name: "دوستان", isPrivate: false },
+      family: { id: "family", name: "خانوادگی", isPrivate: true, password: "1234" } // رمز تست
     };
+
+    // اتاق‌های ساخته شده توسط کاربر (از دیتابیس)
+    let customRooms = {};
 
     // --- Theme initial ---
     const savedTheme = localStorage.getItem("parham-chat-theme");
@@ -838,11 +867,12 @@
     });
 
     // --- Helper refs ---
-    const roomMessagesRef = (room) => ref(db, `rooms/${room}/messages`);
-    const roomOnlineRef = (room) => ref(db, `rooms/${room}/online`);
-    const myOnlineRef = (room) => ref(db, `rooms/${room}/online/${myId}`);
-    const roomTypingRef = (room) => ref(db, `rooms/${room}/typing`);
-    const myTypingRef = (room) => ref(db, `rooms/${room}/typing/${myId}`);
+    const roomMessagesRef = (roomId) => ref(db, `rooms/${roomId}/messages`);
+    const roomOnlineRef = (roomId) => ref(db, `rooms/${roomId}/online`);
+    const myOnlineRef = (roomId) => ref(db, `rooms/${roomId}/online/${myId}`);
+    const roomTypingRef = (roomId) => ref(db, `rooms/${roomId}/typing`);
+    const myTypingRef = (roomId) => ref(db, `rooms/${roomId}/typing/${myId}`);
+    const roomsMetaRef = ref(db, "roomsMeta");
 
     function showError(msg) {
       if (!errorBanner) return;
@@ -863,6 +893,7 @@
       return nameInput.value.trim() || "Anonymous";
     }
 
+    // --- ساخت و نمایش پیام ---
     function createMessageElement(messageObj) {
       const { name, text, authorId, createdAt, imageUrl, key } = messageObj;
       const isMe = authorId === myId;
@@ -1051,8 +1082,8 @@
       updatePresence();
     });
 
-    function setupPresenceForRoom(room) {
-      const onlineRef = myOnlineRef(room);
+    function setupPresenceForRoom(roomId) {
+      const onlineRef = myOnlineRef(roomId);
       const name = getDisplayName();
       set(onlineRef, {
         name,
@@ -1061,10 +1092,10 @@
       onDisconnect(onlineRef).remove();
     }
 
-    function listenOnlineUsers(room) {
+    function listenOnlineUsers(roomId) {
       if (unsubscribeOnline) unsubscribeOnline();
 
-      unsubscribeOnline = onValue(roomOnlineRef(room), (snapshot) => {
+      unsubscribeOnline = onValue(roomOnlineRef(roomId), (snapshot) => {
         onlineList.innerHTML = "";
         const val = snapshot.val();
         if (!val) return;
@@ -1082,10 +1113,10 @@
       });
     }
 
-    function listenTyping(room) {
+    function listenTyping(roomId) {
       if (unsubscribeTyping) unsubscribeTyping();
 
-      unsubscribeTyping = onValue(roomTypingRef(room), (snapshot) => {
+      unsubscribeTyping = onValue(roomTypingRef(roomId), (snapshot) => {
         const val = snapshot.val();
         if (!val) {
           typingIndicator.textContent = "";
@@ -1107,13 +1138,13 @@
       });
     }
 
-    function listenMessages(room) {
+    function listenMessages(roomId) {
       if (unsubscribeMessages) unsubscribeMessages();
       if (unsubscribeRemoved) unsubscribeRemoved();
 
       messagesContainer.innerHTML = "";
 
-      unsubscribeMessages = onChildAdded(roomMessagesRef(room), (snapshot) => {
+      unsubscribeMessages = onChildAdded(roomMessagesRef(roomId), (snapshot) => {
         const data = snapshot.val();
         if (!data) return;
         const msgObj = {
@@ -1128,28 +1159,62 @@
         notifyNewMessage(msgObj);
       });
 
-      unsubscribeRemoved = onChildRemoved(roomMessagesRef(room), (snapshot) => {
+      unsubscribeRemoved = onChildRemoved(roomMessagesRef(roomId), (snapshot) => {
         const key = snapshot.key;
         const el = messagesContainer.querySelector(`[data-key="${key}"]`);
         if (el) el.remove();
       });
     }
 
-    // مدیریت تغییر اتاق
-    function setActiveTab(room) {
-      roomTabs.forEach((btn) => {
-        btn.classList.toggle("active", btn.dataset.room === room);
+    // --- مدیریت اتاق‌ها (Tabs + DB) ---
+    function renderRoomTabs() {
+      roomTabsContainer.innerHTML = "";
+
+      const allRooms = [
+        defaultRooms.general,
+        defaultRooms.friends,
+        defaultRooms.family,
+        ...Object.values(customRooms)
+      ];
+
+      allRooms.forEach((room) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "room-tab" + (currentRoom === room.id ? " active" : "");
+        btn.dataset.room = room.id;
+        btn.textContent = room.name + (room.isPrivate ? " 🔒" : "");
+        roomTabsContainer.appendChild(btn);
       });
     }
 
-    function askRoomPasswordIfNeeded(room) {
-      if (!roomPasswords[room]) return true;
-      const stored = sessionStorage.getItem("roomAccess-" + room);
+    function askRoomPasswordIfNeeded(roomId) {
+      // اول: اگر اتاق پیش‌فرض است
+      if (defaultRooms[roomId] && defaultRooms[roomId].isPrivate) {
+        const stored = sessionStorage.getItem("roomAccess-" + roomId);
+        if (stored === "ok") return true;
+
+        const answer = prompt("رمز این اتاق را وارد کن:");
+        if (answer === defaultRooms[roomId].password) {
+          sessionStorage.setItem("roomAccess-" + roomId, "ok");
+          return true;
+        } else {
+          showError("رمز نادرست است.");
+          return false;
+        }
+      }
+
+      // اگر اتاق سفارشی از دیتابیس است
+      const roomMeta = customRooms[roomId];
+      if (!roomMeta || !roomMeta.isPrivate || !roomMeta.hasPassword) {
+        return true;
+      }
+
+      const stored = sessionStorage.getItem("roomAccess-" + roomId);
       if (stored === "ok") return true;
 
-      const answer = prompt("رمز اتاق خانوادگی را وارد کن:");
-      if (answer === roomPasswords[room]) {
-        sessionStorage.setItem("roomAccess-" + room, "ok");
+      const answer = prompt("رمز این اتاق را وارد کن:");
+      if (answer === roomMeta.password) {
+        sessionStorage.setItem("roomAccess-" + roomId, "ok");
         return true;
       } else {
         showError("رمز نادرست است.");
@@ -1157,29 +1222,74 @@
       }
     }
 
-    function switchRoom(room) {
-      if (room === currentRoom) return;
-      if (!askRoomPasswordIfNeeded(room)) return;
+    function switchRoom(roomId) {
+      if (roomId === currentRoom) return;
+      if (!askRoomPasswordIfNeeded(roomId)) return;
 
       // خروج از اتاق قبلی: حضور را حذف می‌کنیم
       remove(myOnlineRef(currentRoom)).catch(() => {});
 
-      currentRoom = room;
-      setActiveTab(room);
+      currentRoom = roomId;
       typingIndicator.textContent = "";
       onlineList.innerHTML = "";
-      listenMessages(room);
-      listenTyping(room);
-      listenOnlineUsers(room);
-      setupPresenceForRoom(room);
+      renderRoomTabs();
+      listenMessages(roomId);
+      listenTyping(roomId);
+      listenOnlineUsers(roomId);
+      setupPresenceForRoom(roomId);
       updatePresence();
     }
 
-    roomTabs.forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const room = btn.dataset.room;
-        switchRoom(room);
+    roomTabsContainer.addEventListener("click", (e) => {
+      const btn = e.target.closest(".room-tab");
+      if (!btn || btn.classList.contains("create")) return;
+      const roomId = btn.dataset.room;
+      if (!roomId) return;
+      switchRoom(roomId);
+    });
+
+    // ساخت اتاق جدید
+    createRoomBtn.addEventListener("click", async () => {
+      const name = prompt("نام اتاق جدید را وارد کن:");
+      if (!name) return;
+      const isPrivate = confirm("اتاق خصوصی باشد؟ اگر Yes را بزنی، رمز می‌خواهد.");
+      let password = "";
+      if (isPrivate) {
+        password = prompt("رمز اتاق را وارد کن (می‌توانی خالی بگذاری):") || "";
+      }
+
+      const payload = {
+        name,
+        isPrivate: !!isPrivate,
+        hasPassword: !!password,
+        password
+      };
+
+      try {
+        const newRef = await push(roomsMetaRef, payload);
+        // در customRooms ذخیره می‌شود وقتی onValue تریگر شود
+        switchRoom(newRef.key);
+      } catch (err) {
+        console.error(err);
+        showError("اتاق ساخته نشد، دوباره امتحان کن.");
+      }
+    });
+
+    // لیسنر برای متادیتای اتاق‌ها از دیتابیس (roomsMeta)
+    onValue(roomsMetaRef, (snapshot) => {
+      const val = snapshot.val() || {};
+      customRooms = {};
+      Object.keys(val).forEach((id) => {
+        const r = val[id];
+        customRooms[id] = {
+          id,
+          name: r.name || "اتاق جدید",
+          isPrivate: !!r.isPrivate,
+          hasPassword: !!r.hasPassword,
+          password: r.password || ""
+        };
       });
+      renderRoomTabs();
     });
 
     // ارسال تصویر
@@ -1219,7 +1329,8 @@
       Notification.requestPermission().catch(() => {});
     }
 
-    // شروع: اتاق عمومی
+    // شروع اولیه: اتاق عمومی
+    renderRoomTabs();
     listenMessages(currentRoom);
     listenTyping(currentRoom);
     listenOnlineUsers(currentRoom);
