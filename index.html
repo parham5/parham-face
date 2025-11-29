@@ -465,7 +465,7 @@
     /* Right pane (info) */
     .info-pane {
       padding: 20px 18px;
-      display: flex;
+      display: none;
       flex-direction: column;
       gap: 14px;
       background: radial-gradient(circle at top right, rgba(56,189,248,0.16), transparent 55%),
@@ -708,65 +708,6 @@
           <div id="errorBanner" class="error-banner"></div>
         </div>
       </div>
-
-      <!-- Info pane -->
-      <aside class="info-pane">
-        <div class="info-badge">
-          <span>🔥 Realtime Firebase Chat</span>
-        </div>
-        <div>
-          <h2 class="info-title">چت ساده اما حرفه‌ای</h2>
-          <p class="info-sub">
-            این صفحه یک پیام‌رسان ساده است که با استفاده از Firebase Realtime Database ساخته شده.
-            هر پیامی که ارسال می‌کنی، برای همه‌ی افرادی که همین اتاق را باز کرده‌اند به صورت آنی نمایش داده می‌شود.
-          </p>
-        </div>
-
-        <div class="info-card">
-          <h3>ویژگی‌ها</h3>
-          <div class="pill-row">
-            <span class="pill">Realtime 🔁</span>
-            <span class="pill">چند‌نفره 👥</span>
-            <span class="pill">Rooms 🧩</span>
-            <span class="pill">Online Users ✅</span>
-            <span class="pill">Typing… ✍️</span>
-            <span class="pill">ارسال تصویر 🖼️</span>
-            <span class="pill">حذف پیام 🗑️</span>
-            <span class="pill">نوتیفیکیشن 🔔</span>
-            <span class="pill">Dark / Light Theme</span>
-          </div>
-        </div>
-
-        <div class="info-card">
-          <h3>کاربران آنلاین این اتاق</h3>
-          <ul id="onlineList" class="online-list"></ul>
-        </div>
-
-        <div class="info-card">
-          <h3>قوانین دسترسی</h3>
-          <p>
-            اتاق <strong>خانوادگی</strong> و اتاق‌های خصوصی می‌تونن رمز داشته باشن.
-            هنگام ورود، اگر رمز تعریف شده باشد، از شما پرسیده می‌شود.
-          </p>
-        </div>
-
-        <div class="info-card">
-          <div class="status-row">
-            <span class="status-dot-live"></span>
-            <span>همه‌ی تب‌ها و دستگاه‌ها هم‌زمان سینک می‌شوند؛ مثل پیام‌رسان‌های واقعی.</span>
-          </div>
-        </div>
-
-        <div class="info-card">
-          <h3>Theme</h3>
-          <button id="themeToggle" class="theme-toggle" type="button">
-            <span class="dot"></span>
-            <span id="themeToggleLabel">Dark Mode</span>
-          </button>
-        </div>
-      </aside>
-    </div>
-  </div>
 
   <input id="imageInput" type="file" accept="image/*" style="display:none" />
 
